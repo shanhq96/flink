@@ -18,17 +18,19 @@
 
 package org.apache.flink.formats.avro.glue.schema.registry;
 
+import org.apache.avro.SchemaParseException;
+
 import org.apache.flink.formats.avro.utils.MutableByteArrayInputStream;
 
 import com.amazonaws.services.schemaregistry.deserializers.AWSDeserializer;
 import com.amazonaws.services.schemaregistry.exception.AWSSchemaRegistryException;
 import org.apache.avro.Schema;
 import org.apache.avro.Schema.Parser;
-import org.apache.avro.SchemaParseException;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -37,6 +39,7 @@ import java.util.Map;
  */
 public class GlueSchemaRegistryInputStreamDeserializer {
     private final AWSDeserializer awsDeserializer;
+    private final Map<String, Schema> cache;
 
     /**
      * Constructor accepts configuration map for AWS Deserializer.
@@ -49,17 +52,21 @@ public class GlueSchemaRegistryInputStreamDeserializer {
                         .credentialProvider(DefaultCredentialsProvider.builder().build())
                         .configs(configs)
                         .build();
+        cache = new HashMap<>();
     }
 
     public GlueSchemaRegistryInputStreamDeserializer(AWSDeserializer awsDeserializer) {
         this.awsDeserializer = awsDeserializer;
+        cache = new HashMap<>();
     }
 
     /**
      * Get schema and remove extra Schema Registry information within input stream.
      *
      * @param in input stream
+     *
      * @return schema of object within input stream
+     *
      * @throws IOException Exception during decompression
      */
     public Schema getSchemaAndDeserializedStream(InputStream in) throws IOException {
@@ -71,15 +78,19 @@ public class GlueSchemaRegistryInputStreamDeserializer {
         String schemaDefinition = awsDeserializer.getSchema(inputBytes).getSchemaDefinition();
         byte[] deserializedBytes = awsDeserializer.getActualData(inputBytes);
         mutableByteArrayInputStream.setBuffer(deserializedBytes);
-
         Schema schema;
-        try {
-            Parser schemaParser = new Schema.Parser();
-            schema = schemaParser.parse(schemaDefinition);
-        } catch (SchemaParseException e) {
-            String message =
-                    "Error occurred while parsing schema, see inner exception for details.";
-            throw new AWSSchemaRegistryException(message, e);
+        if (cache.containsKey(schemaDefinition)) {
+            schema = cache.get(schemaDefinition);
+        } else {
+            try {
+                Parser schemaParser = new Schema.Parser();
+                schema = schemaParser.parse(schemaDefinition);
+                cache.put(schemaDefinition, schema);
+            } catch (SchemaParseException e) {
+                String message =
+                        "Error occurred while parsing schema, see inner exception for details.";
+                throw new AWSSchemaRegistryException(message, e);
+            }
         }
 
         return schema;
