@@ -1,8 +1,5 @@
 package org.apache.flink.formats.avro.glue.schema.registry;
 
-import com.amazonaws.services.schemaregistry.utils.AWSSchemaRegistryConstants;
-import com.amazonaws.services.schemaregistry.utils.AvroRecordType;
-
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
@@ -26,6 +23,9 @@ import org.apache.flink.table.factories.SerializationFormatFactory;
 import org.apache.flink.table.types.DataType;
 import org.apache.flink.table.types.logical.RowType;
 
+import com.amazonaws.services.schemaregistry.utils.AWSSchemaRegistryConstants;
+import com.amazonaws.services.schemaregistry.utils.AvroRecordType;
+
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -33,6 +33,7 @@ import java.util.Set;
 
 import static org.apache.flink.formats.avro.glue.schema.registry.GlueSchemaRegistryAvroOptions.GLUE_SCHEMA_REGISTRY_AUTO_REGISTRATION;
 import static org.apache.flink.formats.avro.glue.schema.registry.GlueSchemaRegistryAvroOptions.GLUE_SCHEMA_REGISTRY_AWS_REGION;
+import static org.apache.flink.formats.avro.glue.schema.registry.GlueSchemaRegistryAvroOptions.GLUE_SCHEMA_REGISTRY_JITTER_BOUND_IN_MINUTES;
 import static org.apache.flink.formats.avro.glue.schema.registry.GlueSchemaRegistryAvroOptions.GLUE_SCHEMA_REGISTRY_REGISTRY_NAME;
 import static org.apache.flink.formats.avro.glue.schema.registry.GlueSchemaRegistryAvroOptions.GLUE_SCHEMA_REGISTRY_SCHEMA_NAME;
 
@@ -60,6 +61,9 @@ public class GlueSchemaRegistryAvroFormatFactory
         configs.put(
                 AWSSchemaRegistryConstants.AVRO_RECORD_TYPE,
                 AvroRecordType.GENERIC_RECORD.getName());
+        configs.put(
+                GlueSchemaRegistryConstants.JITTER_BOUND_IN_MINUTES_KEY,
+                formatOptions.get(GLUE_SCHEMA_REGISTRY_JITTER_BOUND_IN_MINUTES));
 
         return new DecodingFormat<DeserializationSchema<RowData>>() {
             @Override
@@ -104,7 +108,10 @@ public class GlueSchemaRegistryAvroFormatFactory
         configs.put(
                 AWSSchemaRegistryConstants.AVRO_RECORD_TYPE,
                 AvroRecordType.GENERIC_RECORD.getName());
-        
+        configs.put(
+                GlueSchemaRegistryConstants.JITTER_BOUND_IN_MINUTES_KEY,
+                formatOptions.get(GLUE_SCHEMA_REGISTRY_JITTER_BOUND_IN_MINUTES));
+
         return new EncodingFormat<SerializationSchema<RowData>>() {
             @Override
             public ChangelogMode getChangelogMode() {

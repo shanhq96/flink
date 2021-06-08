@@ -29,7 +29,10 @@ import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.HashMap;
 import java.util.Map;
+
+import static org.apache.flink.formats.avro.glue.schema.registry.GlueSchemaRegistryConstants.JITTER_BOUND_IN_MINUTES_KEY;
 
 /**
  * AWS Glue Schema Registry input stream de-serializer to accept input stream and extract schema
@@ -37,6 +40,9 @@ import java.util.Map;
  */
 public class GlueSchemaRegistryInputStreamDeserializer {
     private final AWSDeserializer awsDeserializer;
+    private final Map<String, Schema> cache;
+    private final int jitterBoundInMinutes;
+    private boolean jittered = false;
 
     /**
      * Constructor accepts configuration map for AWS Deserializer.
@@ -49,17 +55,23 @@ public class GlueSchemaRegistryInputStreamDeserializer {
                         .credentialProvider(DefaultCredentialsProvider.builder().build())
                         .configs(configs)
                         .build();
+        cache = new HashMap<>();
+        jitterBoundInMinutes = (int) configs.get(JITTER_BOUND_IN_MINUTES_KEY);
     }
 
     public GlueSchemaRegistryInputStreamDeserializer(AWSDeserializer awsDeserializer) {
         this.awsDeserializer = awsDeserializer;
+        cache = new HashMap<>();
+        jitterBoundInMinutes = 1;
     }
 
     /**
      * Get schema and remove extra Schema Registry information within input stream.
      *
      * @param in input stream
+     *
      * @return schema of object within input stream
+     *
      * @throws IOException Exception during decompression
      */
     public Schema getSchemaAndDeserializedStream(InputStream in) throws IOException {
@@ -67,19 +79,28 @@ public class GlueSchemaRegistryInputStreamDeserializer {
         in.read(inputBytes);
         in.reset();
 
+        if (!jittered) {
+            GlueSchemaRegistryUtil.injectJitter(jitterBoundInMinutes);
+            jittered = true;
+        }
+
         MutableByteArrayInputStream mutableByteArrayInputStream = (MutableByteArrayInputStream) in;
         String schemaDefinition = awsDeserializer.getSchema(inputBytes).getSchemaDefinition();
         byte[] deserializedBytes = awsDeserializer.getActualData(inputBytes);
         mutableByteArrayInputStream.setBuffer(deserializedBytes);
-
         Schema schema;
-        try {
-            Parser schemaParser = new Schema.Parser();
-            schema = schemaParser.parse(schemaDefinition);
-        } catch (SchemaParseException e) {
-            String message =
-                    "Error occurred while parsing schema, see inner exception for details.";
-            throw new AWSSchemaRegistryException(message, e);
+        if (cache.containsKey(schemaDefinition)) {
+            schema = cache.get(schemaDefinition);
+        } else {
+            try {
+                Parser schemaParser = new Schema.Parser();
+                schema = schemaParser.parse(schemaDefinition);
+                cache.put(schemaDefinition, schema);
+            } catch (SchemaParseException e) {
+                String message =
+                        "Error occurred while parsing schema, see inner exception for details.";
+                throw new AWSSchemaRegistryException(message, e);
+            }
         }
 
         return schema;

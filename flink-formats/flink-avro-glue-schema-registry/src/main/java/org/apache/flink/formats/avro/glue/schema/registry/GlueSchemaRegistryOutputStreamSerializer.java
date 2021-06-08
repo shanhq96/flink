@@ -19,6 +19,7 @@
 package org.apache.flink.formats.avro.glue.schema.registry;
 
 import com.amazonaws.services.schemaregistry.common.configs.GlueSchemaRegistryConfiguration;
+import com.amazonaws.services.schemaregistry.exception.AWSSchemaRegistryException;
 import com.amazonaws.services.schemaregistry.serializers.GlueSchemaRegistrySerializationFacade;
 import com.amazonaws.services.schemaregistry.utils.AWSSchemaRegistryUtils;
 import org.apache.avro.Schema;
@@ -28,6 +29,8 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Map;
 
+import static org.apache.flink.formats.avro.glue.schema.registry.GlueSchemaRegistryConstants.JITTER_BOUND_IN_MINUTES_KEY;
+
 /**
  * AWS Glue Schema Registry output stream serializer to accept schema and output stream to register
  * schema and write serialized object with schema registry bytes to output stream.
@@ -36,6 +39,8 @@ public class GlueSchemaRegistryOutputStreamSerializer {
     private final String transportName;
     private final Map<String, Object> configs;
     private final GlueSchemaRegistrySerializationFacade glueSchemaRegistrySerializationFacade;
+    private final int jitterBoundInMinutes;
+    private boolean jittered = false;
 
     public GlueSchemaRegistryOutputStreamSerializer(
             String transportName, Map<String, Object> configs) {
@@ -56,6 +61,7 @@ public class GlueSchemaRegistryOutputStreamSerializer {
                                 .glueSchemaRegistryConfiguration(
                                         new GlueSchemaRegistryConfiguration(configs))
                                 .build();
+        jitterBoundInMinutes = (int) configs.get(JITTER_BOUND_IN_MINUTES_KEY);
     }
 
     /**
@@ -68,6 +74,11 @@ public class GlueSchemaRegistryOutputStreamSerializer {
      */
     public void registerSchemaAndSerializeStream(Schema schema, OutputStream out, byte[] data)
             throws IOException {
+        if (!jittered) {
+            GlueSchemaRegistryUtil.injectJitter(jitterBoundInMinutes);
+            jittered = true;
+        }
+
         byte[] bytes =
                 glueSchemaRegistrySerializationFacade.encode(
                         transportName,
