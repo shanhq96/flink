@@ -28,9 +28,9 @@ public class GlueSchemaRegistryAvroOptions {
                     .defaultValue(false)
                     .withDescription("Required auto-registration to connect to schema registry service");
 
-    public static final ConfigOption<Integer> GLUE_SCHEMA_REGISTRY_DELAY_MINUTES_BOUND =
-            ConfigOptions.key("glue-schema-registry.delay-minutes-bound")
+    public static final ConfigOption<Integer> GLUE_SCHEMA_REGISTRY_JITTER_BOUND_IN_MINUTES =
+            ConfigOptions.key("glue-schema-registry.jitter-bound-in-minutes")
                     .intType()
                     .defaultValue(1)
-                    .withDescription("Required delay minutes bound to init the schema registry service client");
+                    .withDescription("Required jitter bound in minutes to init the schema registry service client");
 }
