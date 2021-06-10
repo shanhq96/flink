@@ -18,20 +18,21 @@
 
 package org.apache.flink.formats.avro.glue.schema.registry;
 
-import org.apache.avro.SchemaParseException;
-
-import org.apache.flink.formats.avro.utils.MutableByteArrayInputStream;
-
 import com.amazonaws.services.schemaregistry.deserializers.AWSDeserializer;
 import com.amazonaws.services.schemaregistry.exception.AWSSchemaRegistryException;
 import org.apache.avro.Schema;
 import org.apache.avro.Schema.Parser;
+import org.apache.avro.SchemaParseException;
+
+import org.apache.flink.formats.avro.utils.MutableByteArrayInputStream;
+
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Random;
 
 /**
  * AWS Glue Schema Registry input stream de-serializer to accept input stream and extract schema
@@ -40,6 +41,7 @@ import java.util.Map;
 public class GlueSchemaRegistryInputStreamDeserializer {
     private final AWSDeserializer awsDeserializer;
     private final Map<String, Schema> cache;
+    private boolean jittered = false;
 
     /**
      * Constructor accepts configuration map for AWS Deserializer.
@@ -74,6 +76,11 @@ public class GlueSchemaRegistryInputStreamDeserializer {
         in.read(inputBytes);
         in.reset();
 
+        if (!jittered) {
+            injectJitter(1);
+            jittered = true;
+        }
+
         MutableByteArrayInputStream mutableByteArrayInputStream = (MutableByteArrayInputStream) in;
         String schemaDefinition = awsDeserializer.getSchema(inputBytes).getSchemaDefinition();
         byte[] deserializedBytes = awsDeserializer.getActualData(inputBytes);
@@ -94,5 +101,24 @@ public class GlueSchemaRegistryInputStreamDeserializer {
         }
 
         return schema;
+    }
+
+
+    /**
+     * Since glue schema registry service has TPS limit,
+     * we would like to delay a while to reduce the peak TPS during flink application startup
+     *
+     * @param jitterBoundInMinutes
+     */
+    private void injectJitter(int jitterBoundInMinutes) {
+        final Random random = new Random(System.currentTimeMillis());
+        final int sleepSecond = random.nextInt(
+                jitterBoundInMinutes * 60
+        );
+        try {
+            Thread.sleep(sleepSecond * 1000L);
+        } catch (InterruptedException e) {
+            // do nothing
+        }
     }
 }

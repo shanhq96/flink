@@ -34,7 +34,6 @@ import java.util.Set;
 
 import static org.apache.flink.formats.avro.glue.schema.registry.GlueSchemaRegistryAvroOptions.GLUE_SCHEMA_REGISTRY_AUTO_REGISTRATION;
 import static org.apache.flink.formats.avro.glue.schema.registry.GlueSchemaRegistryAvroOptions.GLUE_SCHEMA_REGISTRY_AWS_REGION;
-import static org.apache.flink.formats.avro.glue.schema.registry.GlueSchemaRegistryAvroOptions.GLUE_SCHEMA_REGISTRY_JITTER_BOUND_IN_MINUTES;
 import static org.apache.flink.formats.avro.glue.schema.registry.GlueSchemaRegistryAvroOptions.GLUE_SCHEMA_REGISTRY_REGISTRY_NAME;
 import static org.apache.flink.formats.avro.glue.schema.registry.GlueSchemaRegistryAvroOptions.GLUE_SCHEMA_REGISTRY_SCHEMA_NAME;
 
@@ -62,8 +61,6 @@ public class GlueSchemaRegistryAvroFormatFactory
         configs.put(
                 AWSSchemaRegistryConstants.AVRO_RECORD_TYPE,
                 AvroRecordType.GENERIC_RECORD.getName());
-
-        injectJitter(formatOptions.get(GLUE_SCHEMA_REGISTRY_JITTER_BOUND_IN_MINUTES));
 
         return new DecodingFormat<DeserializationSchema<RowData>>() {
             @Override
@@ -109,8 +106,6 @@ public class GlueSchemaRegistryAvroFormatFactory
                 AWSSchemaRegistryConstants.AVRO_RECORD_TYPE,
                 AvroRecordType.GENERIC_RECORD.getName());
 
-        injectJitter(formatOptions.get(GLUE_SCHEMA_REGISTRY_JITTER_BOUND_IN_MINUTES));
-
         return new EncodingFormat<SerializationSchema<RowData>>() {
             @Override
             public ChangelogMode getChangelogMode() {
@@ -152,26 +147,7 @@ public class GlueSchemaRegistryAvroFormatFactory
         options.add(GLUE_SCHEMA_REGISTRY_AWS_REGION);
         options.add(GLUE_SCHEMA_REGISTRY_REGISTRY_NAME);
         options.add(GLUE_SCHEMA_REGISTRY_AUTO_REGISTRATION);
-        options.add(GLUE_SCHEMA_REGISTRY_JITTER_BOUND_IN_MINUTES);
 
         return options;
-    }
-
-    /**
-     * Since glue schema registry service has TPS limit,
-     * we would like to delay a while to reduce the peak TPS during flink application startup
-     *
-     * @param jitterBoundInMinutes
-     */
-    private void injectJitter(int jitterBoundInMinutes) {
-        final Random random = new Random(System.currentTimeMillis());
-        final int sleepSecond = random.nextInt(
-                jitterBoundInMinutes * 60
-        );
-        try {
-            Thread.sleep(sleepSecond * 1000L);
-        } catch (InterruptedException e) {
-            // do nothing
-        }
     }
 }
