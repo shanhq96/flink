@@ -28,6 +28,12 @@ public class GlueSchemaRegistryAvroOptions {
                     .defaultValue(false)
                     .withDescription("Required auto-registration to connect to schema registry service");
 
+    public static final ConfigOption<String> GLUE_SCHEMA_REGISTRY_CACHE_TTL_MS =
+            ConfigOptions.key("glue-schema-registry.cache-ttl-ms")
+                    .stringType()
+                    .defaultValue("31536000000000")
+                    .withDescription("Required cache time to live in ms to connect to schema registry service");
+
     public static final ConfigOption<Integer> GLUE_SCHEMA_REGISTRY_JITTER_BOUND_IN_MINUTES =
             ConfigOptions.key("glue-schema-registry.jitter-bound-in-minutes")
                     .intType()

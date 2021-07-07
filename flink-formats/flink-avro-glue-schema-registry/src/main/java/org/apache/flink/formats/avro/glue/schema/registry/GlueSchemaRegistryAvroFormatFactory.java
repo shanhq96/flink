@@ -33,6 +33,7 @@ import java.util.Set;
 
 import static org.apache.flink.formats.avro.glue.schema.registry.GlueSchemaRegistryAvroOptions.GLUE_SCHEMA_REGISTRY_AUTO_REGISTRATION;
 import static org.apache.flink.formats.avro.glue.schema.registry.GlueSchemaRegistryAvroOptions.GLUE_SCHEMA_REGISTRY_AWS_REGION;
+import static org.apache.flink.formats.avro.glue.schema.registry.GlueSchemaRegistryAvroOptions.GLUE_SCHEMA_REGISTRY_CACHE_TTL_MS;
 import static org.apache.flink.formats.avro.glue.schema.registry.GlueSchemaRegistryAvroOptions.GLUE_SCHEMA_REGISTRY_JITTER_BOUND_IN_MINUTES;
 import static org.apache.flink.formats.avro.glue.schema.registry.GlueSchemaRegistryAvroOptions.GLUE_SCHEMA_REGISTRY_REGISTRY_NAME;
 import static org.apache.flink.formats.avro.glue.schema.registry.GlueSchemaRegistryAvroOptions.GLUE_SCHEMA_REGISTRY_SCHEMA_NAME;
@@ -61,6 +62,9 @@ public class GlueSchemaRegistryAvroFormatFactory
         configs.put(
                 AWSSchemaRegistryConstants.AVRO_RECORD_TYPE,
                 AvroRecordType.GENERIC_RECORD.getName());
+        configs.put(
+                AWSSchemaRegistryConstants.CACHE_TIME_TO_LIVE_MILLIS,
+                formatOptions.get(GLUE_SCHEMA_REGISTRY_CACHE_TTL_MS));
         configs.put(
                 GlueSchemaRegistryConstants.JITTER_BOUND_IN_MINUTES_KEY,
                 formatOptions.get(GLUE_SCHEMA_REGISTRY_JITTER_BOUND_IN_MINUTES));
@@ -109,6 +113,9 @@ public class GlueSchemaRegistryAvroFormatFactory
                 AWSSchemaRegistryConstants.AVRO_RECORD_TYPE,
                 AvroRecordType.GENERIC_RECORD.getName());
         configs.put(
+                AWSSchemaRegistryConstants.CACHE_TIME_TO_LIVE_MILLIS,
+                formatOptions.get(GLUE_SCHEMA_REGISTRY_CACHE_TTL_MS));
+        configs.put(
                 GlueSchemaRegistryConstants.JITTER_BOUND_IN_MINUTES_KEY,
                 formatOptions.get(GLUE_SCHEMA_REGISTRY_JITTER_BOUND_IN_MINUTES));
 
@@ -153,6 +160,7 @@ public class GlueSchemaRegistryAvroFormatFactory
         options.add(GLUE_SCHEMA_REGISTRY_AWS_REGION);
         options.add(GLUE_SCHEMA_REGISTRY_REGISTRY_NAME);
         options.add(GLUE_SCHEMA_REGISTRY_AUTO_REGISTRATION);
+        options.add(GLUE_SCHEMA_REGISTRY_CACHE_TTL_MS);
 
         return options;
     }
